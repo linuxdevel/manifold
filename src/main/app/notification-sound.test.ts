@@ -16,9 +16,17 @@ describe('playNotificationSound', () => {
   it('invokes Electron native beep on native Linux', () => {
     const beep = vi.fn()
 
-    playNotificationSound(beep, 'linux', {})
+    playNotificationSound(beep, 'linux', {}, () => false)
 
     expect(beep).toHaveBeenCalledOnce()
+  })
+
+  it('does not invoke Electron native beep in Docker', () => {
+    const beep = vi.fn()
+
+    playNotificationSound(beep, 'linux', {}, () => true)
+
+    expect(beep).not.toHaveBeenCalled()
   })
 
   it('invokes Electron native beep on macOS', () => {

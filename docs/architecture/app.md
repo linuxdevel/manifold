@@ -1,7 +1,7 @@
 ---
 description: How the Electron main process boots — shell PATH, dev profile, module wiring, app lifecycle, window creation, menus, auto-updater, mode switching, and the live-preview dev server.
 covers: [src/main/app]
-updated: 2026-07-14
+updated: 2026-07-23
 owner: see .github/CODEOWNERS
 ---
 
@@ -26,7 +26,7 @@ dev-server manager that powers live preview of generated (simple-mode) apps.
 - `src/main/app/auto-updater.ts` — `setupAutoUpdater()`, `checkForUpdates()`, release-notes fetch/caching; wraps `electron-updater`.
 - `src/main/app/crash-diagnostics.ts` — local-only Crashpad dumps and redacted renderer/GPU process-exit events under the active Electron profile's `diagnostics/` directory.
 - `src/main/app/linux-rendering.ts` — applies Linux shared-memory handling and disables hardware acceleration only when WSL is detected.
-- `src/main/app/notification-sound.ts` — avoids Electron's native `shell.beep()` on WSL, where the browser process can jump through a null audio callback.
+- `src/main/app/notification-sound.ts` — avoids Electron's native `shell.beep()` on WSL and Docker, where the browser process can jump through a null audio callback.
 - `src/main/app/dev-server-manager.ts` — `DevServerManager`: simple-mode dev server lifecycle, print-mode follow-up turns, and slash-command probing.
 - `src/main/app/mode-switcher.ts` — `ModeSwitcher`: `app:switch-mode` between `developer`/`simple`, plus `theme:changed` and `app:consume-pending-launch`.
 - `src/main/app/local-renderer-server.ts` — `startLocalRendererServer()`: a static loopback HTTP server so the renderer has a real `http://127.0.0.1` origin in production.
@@ -158,7 +158,7 @@ return a fallback without caching so the next call retries the live API (`getRel
 - **Auto-updater is disabled on Linux.** Linux directory installs update by rebuilding and rerunning `install-linux.sh`; other unpackaged builds require `MANIFOLD_FORCE_DEV_UPDATES=1` to exercise updater behavior (`auto-updater.ts:23-27`, `:237-245`).
 - **Crash diagnostics stay local.** Startup points Electron's `crashDumps` path at `<userData>/diagnostics/dumps`, preserving dev/profile isolation, disables upload and external system crash handlers, and serializes redacted process events into a `0600` JSONL file capped at 1 MiB. The diagnostics directory is `0700`; Crashpad controls dump-file modes. Dumps can contain process memory/environment metadata and are pruned asynchronously after seven days, so treat them as sensitive (`crash-diagnostics.ts:48-161`). Initialization is best-effort and cannot abort app startup.
 - **WSL uses software rendering.** Before Electron readiness, Linux enables `disable-dev-shm-usage`; WSL detection via `WSL_DISTRO_NAME` or `WSL_INTEROP` additionally calls `app.disableHardwareAcceleration()` to avoid WSLg Viz/GPU-process crashes without penalizing native Linux (`linux-rendering.ts:6-17`).
-- **WSL skips native beep.** `app:beep` remains enabled on macOS and native Linux, but WSL returns without calling Electron's native sound path; repeated kernel crashes showed a null browser-process instruction pointer about ten seconds after an agent stopped outputting (`notification-sound.ts:1-8`, `ipc-handlers.ts:52-54`).
+- **WSL and Docker skip native beep.** `app:beep` remains enabled on macOS and native Linux, but WSL and Docker return without calling Electron's native sound path. Docker hides the host's WSL environment variables, so it is detected through `/.dockerenv`; without that check, the notification's ten-second debounce can reach the same browser-process crash path already observed under WSL (`notification-sound.ts:1-11`, `ipc-handlers.ts:52-54`).
 - **`loadShellPath` must not source `.zshrc`.** Interactive rc files hang when launched from Spotlight with no TTY; it asks the login shell for `$PATH` only, then appends known binary dirs as a fallback (`shell-path.ts:9`).
 - **Local renderer server is production-only and best-effort.** It exists so embed providers (YouTube, Vimeo, …) accept a real `http://127.0.0.1` origin instead of `file://`; if it fails to bind, the window falls back to `file://` and those embeds will fail (`window-factory.ts:142`).
 - **Webviews are restricted to localhost.** `will-attach-webview` rejects any non-localhost `src` (host-anchored regex) and strips the preload (`window-factory.ts:77`); GUEST_VIEW `ERR_ABORTED (-3)` noise is deliberately suppressed via the `console.error` monkey-patch at `window-factory.ts:14`.

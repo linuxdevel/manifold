@@ -100,6 +100,10 @@ npm run dev
 
 Requires WSLg (ships with Windows 11 22H2+). The installer keeps the unpacked application under `~/.local/share/manifold`; rerun it to update. "Open in Terminal" uses the distro's `x-terminal-emulator` command, which must be a GNOME-family terminal that accepts `--working-directory` (for example `gnome-terminal`); a terminal that rejects that flag (such as `xterm`) reports an error instead of opening.
 
+## Docker Isolation (Work in Progress)
+
+Docker launcher limits exposed host paths; only GitHub Copilot is currently supported. Tested on x64 WSL2 with WSLg; native Linux has not yet been validated and macOS is unsupported. This is not a hardened sandbox. See `docker/README.md` for setup instructions, the threat model, limitations, and cleanup steps.
+
 ## The Workspace
 
 Manifold opens straight into its full developer workspace — a panelled layout you can rearrange to suit your workflow. The current panel set includes:
